@@ -1,31 +1,44 @@
 # !/bin/bash
 
+ctitle=32
+cinfo=34
+cerror=31
+colorprint() {
+	echo -e "\033[$1m$2\033[0m"
+}
+
+print_info() {
+	#echo "$1"
+	colorprint $cinfo "$1"
+}
+
 checkAvailable() {
 	if [ ! -d $1 ]; then
-		echo "SDK root \"$1\" not exists!"
+		colorprint $cerror "SDK root \"$1\" not exists!"
 		exit 1
-	else
-		echo "Available!"
 	fi
 }
 
 #check build info
-echo 'Build Info:'
+colorprint $ctitle 'Build Info:'
 #libcurl
 curlvar='curl-7.49.1'
-echo -e "* libcurl: ${curlvar} -> \c"
+print_info "* libcurl: ${curlvar}"
 checkAvailable ${curlvar}
+
 #IOS version
 SDK=9.3
-echo '* iPhone SDK version: '$SDK
+print_info "* iPhone SDK version: $SDK"
+
 #iPhoneOS
 XcodeRoot='/Applications/Xcode.app/Contents/Developer/Platforms'
 iPhoneOSSDK="${XcodeRoot}/iPhoneOS.platform/Developer/SDKs/iPhoneOS${SDK}.sdk"
-echo -e "* iPhoneOS install path: ${iPhoneOSSDK} -> \c"
+print_info "* iPhoneOS install path: ${iPhoneOSSDK}"
 checkAvailable ${iPhoneOSSDK}
+
 #iPhone Simulator
 iPhoneSimulatorSDK="${XcodeRoot}/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator${SDK}.sdk"
-echo -e "* iPhone Simulator install path: ${iPhoneSimulatorSDK} -> \c"
+print_info "* iPhone Simulator install path: ${iPhoneSimulatorSDK}"
 checkAvailable ${iPhoneSimulatorSDK}
 
 curpath=`pwd`
@@ -39,9 +52,9 @@ fi
 
 cd $curlvar
 #i386
-echo -e "\nBuild for iPhone Simulator(i386):"
+colorprint $ctitle "\nBuild for iPhone Simulator(i386):"
 deployment_target='6.0'
-echo "* Deployment Target = \"IOS ${deployment_target}\""
+print_info "* Deployment Target = \"IOS ${deployment_target}\""
 
 generateCFlags() {
 	echo "-arch $1 -pipe -Os -gdwarf-2 -isysroot $2"
@@ -49,7 +62,7 @@ generateCFlags() {
 arch='i386'
 
 flags=$(generateCFlags ${arch} ${iPhoneSimulatorSDK})
-echo "* CFLAGS = \"${flags}\""
+print_info "* CFLAGS = \"${flags}\""
 
 generateConfig() {
 	echo "--disable-shared --enable-static --host=\"$1\" --prefix=$2 --with-darwinssl --enable-threaded-resolver"
@@ -57,4 +70,8 @@ generateConfig() {
 host='i386-Apple-darwin'
 curoutput="${output}/i386"
 configcmd=$(generateConfig ${host} ${curoutput})
-echo "* configure cmd = \"${configcmd}\""
+print_info "* configure cmd = \"${configcmd}\""
+
+export iPhoneOS_DEPLOYMENT_TARGET=$deployment_target
+export CFLAGS=$flags
+./configure ${configcmd}
