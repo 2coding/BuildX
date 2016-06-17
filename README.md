@@ -2,10 +2,9 @@
 Scripts for build IOS libs
 
 ## support
-* libcurl
+* libcurl-7.49.1
 
 ## environment
-* Apple LLVM version 7.3.0 (clang-703.0.31)
 * Xcode 7+
 * Mac OS X 10.11+
 * wget
