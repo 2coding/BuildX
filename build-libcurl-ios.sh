@@ -45,7 +45,6 @@ cleanup
 wget https://curl.haxx.se/download/${curlvar}.zip
 unzip -o ./${curlvar}.zip &> download-libcurl.log
 print_title "Download code done!"
-exit 0
 
 #########################################################################################
 #check build info
@@ -81,7 +80,7 @@ create_dir_if_notexists() {
 #########################################################################################
 #build
 curpath=`pwd`
-output="${curpath}/output-ios-libcurl${curlver}"
+output="${curpath}/output-ios-libcurl-${curlver}"
 create_dir_if_notexists ${output}
 
 cd $curlvar
@@ -157,11 +156,15 @@ cd ${curpath}
 bundledir="${output}/bundle"
 create_dir_if_notexists ${bundledir}
 
-lipo -create ${output}/i386/lib/libcurl.a ${output}/armv7/lib/libcurl.a ${output}/arm64/lib/libcurl.a -output ${output}/bundle/libcurl.a
+mkdir ${bundledir}/lib
+lipo -create ${output}/i386/lib/libcurl.a ${output}/armv7/lib/libcurl.a ${output}/arm64/lib/libcurl.a -output ${bundledir}/lib/libcurl.a
 if [ $? != 0 ]; then
 	print_error "bundle libcurl failed!!!"
 	exit 1
 fi
+
+cp -R ${output}/arm64/include ${bundledir}
+
 print_title "bundle done"
 
 #########################################################################################
