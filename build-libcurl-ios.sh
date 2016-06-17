@@ -1,94 +1,41 @@
 # !/bin/bash
 
+. ./build-ios-base.sh
+
 #########################################################################################
 #base config
-SDK=9.3
-curlver=7.49.1
-curlvar="curl-${curlver}"
-XcodeRoot='/Applications/Xcode.app/Contents/Developer/Platforms'
-
-ctitle=32
-cinfo=34
-cerror=31
-colorprint() {
-	echo -e "\033[$1m$2\033[0m"
-}
-
-print_info() {
-	colorprint $cinfo "$1"
-}
-
-print_error() {
-	colorprint $cerror "$1"
-}
-
-print_title() {
-	colorprint $ctitle "$1"
-}
-
-checkAvailable() {
-	if [ ! -d $1 ]; then
-		print_error "SDK root \"$1\" not exists!"
-		exit 1
-	fi
-}
+CURL_VERSION=7.49.1
+CURL_PATH="curl-${CURL_VERSION}"
 
 cleanup() {
-	rm -fR "./${curlvar}"
-	rm -fR "./${curlvar}.zip"
+	rm -fR "./${CURL_PATH}"
+	rm -fR "./${CURL_PATH}.zip"
 }
 
 #########################################################################################
 #download libcurl zip files
 print_title "Start download curl source code..."
 cleanup
-wget https://curl.haxx.se/download/${curlvar}.zip
-unzip -o ./${curlvar}.zip &> download-libcurl.log
+wget https://curl.haxx.se/download/${CURL_PATH}.zip
+unzip -o ./${CURL_PATH}.zip &> download-libcurl.log
 print_title "Download code done!"
 
-#########################################################################################
-#check build info
-print_title '\nBuild Info:'
 #libcurl
-print_info "* libcurl: ${curlvar}"
-checkAvailable ${curlvar}
-
-#IOS version
-print_info "* iPhone SDK version: $SDK"
-
-#iPhoneOS
-iPhoneOSSDK="${XcodeRoot}/iPhoneOS.platform/Developer/SDKs/iPhoneOS${SDK}.sdk"
-print_info "* iPhoneOS install path: ${iPhoneOSSDK}"
-checkAvailable ${iPhoneOSSDK}
-
-#iPhone Simulator
-iPhoneSimulatorSDK="${XcodeRoot}/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator${SDK}.sdk"
-print_info "* iPhone Simulator install path: ${iPhoneSimulatorSDK}"
-checkAvailable ${iPhoneSimulatorSDK}
-
-create_dir_if_notexists() {
-	dirpath=$1
-	print_info "create dir at \"${dirpath}\""
-	if [ ! -d $dirpath ]; then
-		mkdir ${dirpath}
-	else
-		rm -fR ${dirpath}
-		mkdir ${dirpath}
-	fi
-}
+print_info "* libcurl: ${CURL_PATH}"
+check_available ${CURL_PATH}
 
 #########################################################################################
 #build
-curpath=`pwd`
-output="${curpath}/output-ios-libcurl-${curlver}"
-create_dir_if_notexists ${output}
+CURRENT_PATH=`pwd`
+OUTPUT_DIR="${CURRENT_PATH}/output-ios-libcurl-${CURL_VERSION}"
+recreact_dir ${OUTPUT_DIR}
 
-cd $curlvar
-generateCFlags() {
+cd $CURL_PATH
+generate_cflags() {
 	echo "-arch $1 -pipe -Os -gdwarf-2 -isysroot $2"
 }
 
-generateConfig() {
+generate_config() {
 	if [ "$2" == "armv7" ]; then
 		echo "--disable-shared --enable-static --host=$2-apple-darwin --prefix=$1 --with-darwinssl --enable-threaded-resolver"
 	elif [ "$2" == "arm64" ]; then
@@ -105,13 +52,13 @@ build_libcurl() {
 	deployment_target='6.0'
 	print_info "* Deployment Target = \"IOS ${deployment_target}\""
 
-	flags=$(generateCFlags ${arch} ${sdkpath})
+	flags=$(generate_cflags ${arch} ${sdkpath})
 	print_info "* CFLAGS = \"${flags}\""
 
 
-	curoutput="${output}/${arch}"
-	create_dir_if_notexists ${curoutput}
-	configcmd=$(generateConfig ${curoutput} ${arch})
+	curoutput="${OUTPUT_DIR}/${arch}"
+	recreact_dir ${curoutput}
+	configcmd=$(generate_config ${curoutput} ${arch})
 	print_info "* configure cmd = \"${configcmd}\""
 
 	buildlog="${curoutput}/build.log"
@@ -145,25 +92,25 @@ build_libcurl() {
 	print_title "Build for ${arch} Done! You can find build log at \"${buildlog}\""
 }
 
-build_libcurl 'i386' ${iPhoneSimulatorSDK}
-build_libcurl 'armv7' ${iPhoneOSSDK}
-build_libcurl 'arm64' ${iPhoneOSSDK}
+build_libcurl 'i386' ${IPHONE_SIMULATOR_SDK}
+build_libcurl 'armv7' ${IPHONE_OS_SDK}
+build_libcurl 'arm64' ${IPHONE_OS_SDK}
 
 #########################################################################################
 #bundle
 print_title "\nStart bundle..."
-cd ${curpath}
-bundledir="${output}/bundle"
-create_dir_if_notexists ${bundledir}
+cd ${CURRENT_PATH}
+bundledir="${OUTPUT_DIR}/bundle"
+recreact_dir ${bundledir}
 
 mkdir ${bundledir}/lib
-lipo -create ${output}/i386/lib/libcurl.a ${output}/armv7/lib/libcurl.a ${output}/arm64/lib/libcurl.a -output ${bundledir}/lib/libcurl.a
+lipo -create ${OUTPUT_DIR}/i386/lib/libcurl.a ${OUTPUT_DIR}/armv7/lib/libcurl.a ${OUTPUT_DIR}/arm64/lib/libcurl.a -output ${bundledir}/lib/libcurl.a
 if [ $? != 0 ]; then
 	print_error "bundle libcurl failed!!!"
 	exit 1
 fi
 
-cp -R ${output}/arm64/include ${bundledir}
+cp -R ${OUTPUT_DIR}/arm64/include ${bundledir}
 
 print_title "bundle done"
 
@@ -171,5 +118,5 @@ print_title "bundle done"
 #cleanup
 cleanup
 
-#cd $curpath
-print_title "Build libcurl for IOS Done, You can find libs in \"${output}\""
+#cd $CURRENT_PATH
+print_title "Build libcurl for IOS Done, You can find libs in \"$OUTPUT_DIR\""
