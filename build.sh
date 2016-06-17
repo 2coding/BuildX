@@ -65,7 +65,7 @@ flags=$(generateCFlags ${arch} ${iPhoneSimulatorSDK})
 print_info "* CFLAGS = \"${flags}\""
 
 generateConfig() {
-	echo "--disable-shared --enable-static --host=\"$1\" --prefix=$2 --with-darwinssl --enable-threaded-resolver"
+	echo "--disable-shared --enable-static --host=\"$1\" --prefix=\"$2\" --with-darwinssl --enable-threaded-resolver"
 }
 host='i386-Apple-darwin'
 curoutput="${output}/i386"
