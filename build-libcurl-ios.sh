@@ -1,7 +1,10 @@
 # !/bin/bash
 
+#########################################################################################
+#base config
 SDK=9.3
 curlver=7.49.1
+curlvar="curl-${curlver}"
 XcodeRoot='/Applications/Xcode.app/Contents/Developer/Platforms'
 
 ctitle=32
@@ -30,15 +33,24 @@ checkAvailable() {
 	fi
 }
 
-print_title "Start download curl source code..."
-wget https://curl.haxx.se/download/curl-${curlver}.zip
-unzip -o ./curl-${curlver}.zip
-print_title "Download code done!"
+cleanup() {
+	rm -fR "./${curlvar}"
+	rm -fR "./${curlvar}.zip"
+}
 
+#########################################################################################
+#download libcurl zip files
+print_title "Start download curl source code..."
+cleanup
+wget https://curl.haxx.se/download/${curlvar}.zip
+unzip -o ./${curlvar}.zip &> download-libcurl.log
+print_title "Download code done!"
+exit 0
+
+#########################################################################################
 #check build info
 print_title '\nBuild Info:'
 #libcurl
-curlvar="curl-${curlver}"
 print_info "* libcurl: ${curlvar}"
 checkAvailable ${curlvar}
 
@@ -66,6 +78,8 @@ create_dir_if_notexists() {
 	fi
 }
 
+#########################################################################################
+#build
 curpath=`pwd`
 output="${curpath}/output-ios-libcurl${curlver}"
 create_dir_if_notexists ${output}
@@ -136,6 +150,8 @@ build_libcurl 'i386' ${iPhoneSimulatorSDK}
 build_libcurl 'armv7' ${iPhoneOSSDK}
 build_libcurl 'arm64' ${iPhoneOSSDK}
 
+#########################################################################################
+#bundle
 print_title "\nStart bundle..."
 cd ${curpath}
 bundledir="${output}/bundle"
@@ -146,6 +162,11 @@ if [ $? != 0 ]; then
 	print_error "bundle libcurl failed!!!"
 	exit 1
 fi
+print_title "bundle done"
+
+#########################################################################################
+#cleanup
+cleanup
 
 #cd $curpath
 print_title "Build libcurl for IOS Done, You can find libs in \"${output}\""
