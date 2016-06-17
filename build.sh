@@ -70,13 +70,19 @@ generateCFlags() {
 }
 
 generateConfig() {
-	echo "--disable-shared --enable-static --prefix=$1 --with-darwinssl --enable-threaded-resolver"
+	if [ "$2" == "armv7" ]; then
+		echo "--disable-shared --enable-static --host=$2-apple-darwin --prefix=$1 --with-darwinssl --enable-threaded-resolver"
+	elif [ "$2" == "arm64" ]; then
+		echo "--disable-shared --enable-static --host=arm-apple-darwin --prefix=$1 --with-darwinssl --enable-threaded-resolver"
+	else
+		echo "--disable-shared --enable-static --prefix=$1 --with-darwinssl --enable-threaded-resolver"
+	fi
 }
 
 build_libcurl() {
 	arch=$1
-	sdkpath=${iPhoneSimulatorSDK}
-	print_title "Build for ${arch}..."
+	sdkpath=$2
+	print_title "\nBuild for ${arch}..."
 	deployment_target='6.0'
 	print_info "* Deployment Target = \"IOS ${deployment_target}\""
 
@@ -86,15 +92,17 @@ build_libcurl() {
 
 	curoutput="${output}/${arch}"
 	create_dir_if_notexists ${curoutput}
-	configcmd=$(generateConfig ${curoutput})
+	configcmd=$(generateConfig ${curoutput} ${arch})
 	print_info "* configure cmd = \"${configcmd}\""
+
+	buildlog="${curoutput}/build.log"
 
 	#run command
 	export iPhoneOS_DEPLOYMENT_TARGET=$deployment_target
-	export CFLAGS=$flags
+	export CFLAGS="${flags}"
 
 	print_info "configure..."
-	./configure ${configcmd}
+	./configure ${configcmd} &> ${buildlog}
 	if [ $? != 0 ]; then
 		print_error "Configure failed!!!"
 		exit 1
@@ -102,7 +110,7 @@ build_libcurl() {
 	print_info "configure done!"
 
 	print_info "make..."
-	make
+	make &> ${buildlog}
 	if [ $? != 0 ]; then
 		print_error "make failed!!!"
 		exit 1
@@ -110,16 +118,28 @@ build_libcurl() {
 	print_info "make done"
 
 	print_info "Install at ${curoutput}"
-	make install
+	make install &> ${buildlog}
 
 	print_info "clean..."
-	make clean
+	make clean &> ${buildlog}
 
-	print_info "Build for ${arch} Done!"
+	print_title "Build for ${arch} Done! You can find build log at \"${buildlog}\""
 }
 
-#i386
 build_libcurl 'i386' ${iPhoneSimulatorSDK}
+build_libcurl 'armv7' ${iPhoneOSSDK}
+build_libcurl 'arm64' ${iPhoneOSSDK}
+
+print_info "start bundle..."
+cd ${curpath}
+bundledir="${output}/bundle"
+create_dir_if_notexists ${bundledir}
+
+lipo -create ${output}/i386/lib/libcurl.a ${output}/armv7/lib/libcurl.a ${output}/arm64/lib/libcurl.a -output ${output}/bundle/libcurl.a
+if [ $? != 0 ]; then
+	print_error "bundle libcurl failed!!!"
+	exit 1
+fi
 
 #cd $curpath
 print_title "Build libcurl for IOS Done, You can find libs in \"${output}\""
