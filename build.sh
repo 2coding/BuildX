@@ -8,21 +8,29 @@ colorprint() {
 }
 
 print_info() {
-	#echo "$1"
 	colorprint $cinfo "$1"
+}
+
+print_error() {
+	colorprint $cerror "$1"
+}
+
+print_title() {
+	colorprint $ctitle "$1"
 }
 
 checkAvailable() {
 	if [ ! -d $1 ]; then
-		colorprint $cerror "SDK root \"$1\" not exists!"
+		print_error "SDK root \"$1\" not exists!"
 		exit 1
 	fi
 }
 
 #check build info
-colorprint $ctitle 'Build Info:'
+print_title 'Build Info:'
 #libcurl
-curlvar='curl-7.49.1'
+curlver="7.49.1"
+curlvar="curl-${curlver}"
 print_info "* libcurl: ${curlvar}"
 checkAvailable ${curlvar}
 
@@ -41,37 +49,77 @@ iPhoneSimulatorSDK="${XcodeRoot}/iPhoneSimulator.platform/Developer/SDKs/iPhoneS
 print_info "* iPhone Simulator install path: ${iPhoneSimulatorSDK}"
 checkAvailable ${iPhoneSimulatorSDK}
 
+create_dir_if_notexists() {
+	dirpath=$1
+	print_info "create dir at \"${dirpath}\""
+	if [ ! -d $dirpath ]; then
+		mkdir ${dirpath}
+	else
+		rm -fR ${dirpath}
+		mkdir ${dirpath}
+	fi
+}
+
 curpath=`pwd`
-output="${curpath}/libcurl-ios-output"
-if [ ! -d ${output} ]; then
-	mkdir ${output}
-else
-	rm -fR ${output}
-	mkdir ${output}
-fi
+output="${curpath}/libcurl-ios-${curlver}"
+create_dir_if_notexists ${output}
 
 cd $curlvar
-#i386
-colorprint $ctitle "\nBuild for iPhone Simulator(i386):"
-deployment_target='6.0'
-print_info "* Deployment Target = \"IOS ${deployment_target}\""
-
 generateCFlags() {
 	echo "-arch $1 -pipe -Os -gdwarf-2 -isysroot $2"
 }
-arch='i386'
-
-flags=$(generateCFlags ${arch} ${iPhoneSimulatorSDK})
-print_info "* CFLAGS = \"${flags}\""
 
 generateConfig() {
-	echo "--disable-shared --enable-static --host=\"$1\" --prefix=\"$2\" --with-darwinssl --enable-threaded-resolver"
+	echo "--disable-shared --enable-static --prefix=$1 --with-darwinssl --enable-threaded-resolver"
 }
-host='i386-Apple-darwin'
-curoutput="${output}/i386"
-configcmd=$(generateConfig ${host} ${curoutput})
-print_info "* configure cmd = \"${configcmd}\""
 
-export iPhoneOS_DEPLOYMENT_TARGET=$deployment_target
-export CFLAGS=$flags
-./configure ${configcmd}
+build_libcurl() {
+	arch=$1
+	sdkpath=${iPhoneSimulatorSDK}
+	print_title "Build for ${arch}..."
+	deployment_target='6.0'
+	print_info "* Deployment Target = \"IOS ${deployment_target}\""
+
+	flags=$(generateCFlags ${arch} ${sdkpath})
+	print_info "* CFLAGS = \"${flags}\""
+
+
+	curoutput="${output}/${arch}"
+	create_dir_if_notexists ${curoutput}
+	configcmd=$(generateConfig ${curoutput})
+	print_info "* configure cmd = \"${configcmd}\""
+
+	#run command
+	export iPhoneOS_DEPLOYMENT_TARGET=$deployment_target
+	export CFLAGS=$flags
+
+	print_info "configure..."
+	./configure ${configcmd}
+	if [ $? != 0 ]; then
+		print_error "Configure failed!!!"
+		exit 1
+	fi
+	print_info "configure done!"
+
+	print_info "make..."
+	make
+	if [ $? != 0 ]; then
+		print_error "make failed!!!"
+		exit 1
+	fi
+	print_info "make done"
+
+	print_info "Install at ${curoutput}"
+	make install
+
+	print_info "clean..."
+	make clean
+
+	print_info "Build for ${arch} Done!"
+}
+
+#i386
+build_libcurl 'i386' ${iPhoneSimulatorSDK}
+
+#cd $curpath
+print_title "Build libcurl for IOS Done, You can find libs in \"${output}\""
