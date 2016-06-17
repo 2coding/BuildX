@@ -1,7 +1,7 @@
 # !/bin/bash
 
 SDK=9.3
-curlver="7.49.1"
+curlver=7.49.1
 XcodeRoot='/Applications/Xcode.app/Contents/Developer/Platforms'
 
 ctitle=32
@@ -30,8 +30,13 @@ checkAvailable() {
 	fi
 }
 
+print_title "Start download curl source code..."
+wget https://curl.haxx.se/download/curl-${curlver}.zip
+unzip -o ./curl-${curlver}.zip
+print_title "Download code done!"
+
 #check build info
-print_title 'Build Info:'
+print_title '\nBuild Info:'
 #libcurl
 curlvar="curl-${curlver}"
 print_info "* libcurl: ${curlvar}"
@@ -131,7 +136,7 @@ build_libcurl 'i386' ${iPhoneSimulatorSDK}
 build_libcurl 'armv7' ${iPhoneOSSDK}
 build_libcurl 'arm64' ${iPhoneOSSDK}
 
-print_title "start bundle..."
+print_title "\nStart bundle..."
 cd ${curpath}
 bundledir="${output}/bundle"
 create_dir_if_notexists ${bundledir}
