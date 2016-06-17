@@ -1,5 +1,9 @@
 # !/bin/bash
 
+SDK=9.3
+curlver="7.49.1"
+XcodeRoot='/Applications/Xcode.app/Contents/Developer/Platforms'
+
 ctitle=32
 cinfo=34
 cerror=31
@@ -29,17 +33,14 @@ checkAvailable() {
 #check build info
 print_title 'Build Info:'
 #libcurl
-curlver="7.49.1"
 curlvar="curl-${curlver}"
 print_info "* libcurl: ${curlvar}"
 checkAvailable ${curlvar}
 
 #IOS version
-SDK=9.3
 print_info "* iPhone SDK version: $SDK"
 
 #iPhoneOS
-XcodeRoot='/Applications/Xcode.app/Contents/Developer/Platforms'
 iPhoneOSSDK="${XcodeRoot}/iPhoneOS.platform/Developer/SDKs/iPhoneOS${SDK}.sdk"
 print_info "* iPhoneOS install path: ${iPhoneOSSDK}"
 checkAvailable ${iPhoneOSSDK}
@@ -61,7 +62,7 @@ create_dir_if_notexists() {
 }
 
 curpath=`pwd`
-output="${curpath}/libcurl-ios-${curlver}"
+output="${curpath}/output-ios-libcurl${curlver}"
 create_dir_if_notexists ${output}
 
 cd $curlvar
@@ -130,7 +131,7 @@ build_libcurl 'i386' ${iPhoneSimulatorSDK}
 build_libcurl 'armv7' ${iPhoneOSSDK}
 build_libcurl 'arm64' ${iPhoneOSSDK}
 
-print_info "start bundle..."
+print_title "start bundle..."
 cd ${curpath}
 bundledir="${output}/bundle"
 create_dir_if_notexists ${bundledir}
