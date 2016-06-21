@@ -17,7 +17,17 @@ cleanup() {
 print_title "Start download curl source code..."
 cleanup
 wget https://curl.haxx.se/download/${CURL_PATH}.zip
+if [ $? != 0 ]; then
+	print_error "download source code failed"
+	exit 1
+fi
+
 unzip -o ./${CURL_PATH}.zip &> download-libcurl.log
+if [ $? != 0 ]; then
+	print_error "unzip source code failed"
+	exit 1
+fi
+
 print_title "Download code done!"
 
 #libcurl
@@ -33,16 +43,16 @@ DEPLOYMENT_TARGET=6.0
 
 cd $CURL_PATH
 generate_cflags() {
-	echo "-arch $1 -pipe -Os -gdwarf-2 -miphoneos-version-min=${DEPLOYMENT_TARGET} -isysroot $2"
+	echo "-arch $1 -pipe -Os -gdwarf-2 -miphoneos-version-min=${DEPLOYMENT_TARGET} -fembed-bitcode -isysroot $2"
 }
 
 generate_config() {
 	if [ "$2" == "armv7" ]; then
-		echo "--disable-shared --enable-static --host=$2-apple-darwin --prefix=$1 --with-darwinssl --enable-threaded-resolver"
+		echo "--disable-shared --enable-static --enable-ipv6 --host=$2-apple-darwin --prefix=$1 --with-darwinssl --enable-threaded-resolver"
 	elif [ "$2" == "arm64" ]; then
-		echo "--disable-shared --enable-static --host=arm-apple-darwin --prefix=$1 --with-darwinssl --enable-threaded-resolver"
+		echo "--disable-shared --enable-static --enable-ipv6 --host=arm-apple-darwin --prefix=$1 --with-darwinssl --enable-threaded-resolver"
 	else
-		echo "--disable-shared --enable-static --prefix=$1 --with-darwinssl --enable-threaded-resolver"
+		echo "--disable-shared --enable-static --enable-ipv6 --prefix=$1 --with-darwinssl --enable-threaded-resolver"
 	fi
 }
 
@@ -61,13 +71,13 @@ build_libcurl() {
 	configcmd=$(generate_config ${curoutput} ${arch})
 	print_info "* configure cmd = \"${configcmd}\""
 
-	buildlog="${curoutput}/build.log"
+	BUILDLOG="${curoutput}/build.log"
 
 	#run command
 	export CFLAGS="${flags}"
 
 	print_info "configure..."
-	./configure ${configcmd} &> ${buildlog}
+	./configure ${configcmd} &> ${BUILDLOG}
 	if [ $? != 0 ]; then
 		print_error "Configure failed!!!"
 		exit 1
@@ -75,7 +85,7 @@ build_libcurl() {
 	print_info "configure done!"
 
 	print_info "make..."
-	make &> ${buildlog}
+	make >> ${BUILDLOG}
 	if [ $? != 0 ]; then
 		print_error "make failed!!!"
 		exit 1
@@ -83,12 +93,12 @@ build_libcurl() {
 	print_info "make done"
 
 	print_info "Install at ${curoutput}"
-	make install &> ${buildlog}
+	make install >> ${BUILDLOG}
 
 	print_info "clean..."
-	make clean &> ${buildlog}
+	make clean >> ${BUILDLOG}
 
-	print_title "Build for ${arch} Done! You can find build log at \"${buildlog}\""
+	print_title "Build for ${arch} Done! You can find build log at \"${BUILDLOG}\""
 }
 
 build_libcurl 'i386' ${IPHONE_SIMULATOR_SDK}
@@ -110,6 +120,22 @@ if [ $? != 0 ]; then
 fi
 
 cp -R ${OUTPUT_DIR}/arm64/include ${bundledir}
+if [ $? != 0 ]; then
+	print_error 'copy include files failed'
+	exit 1
+fi
+
+CURL_BUILD_HEADER="${bundledir}/include/curl/curlbuild.h"
+sed -ie $'s!#define CURL_SIZEOF_LONG 8!#ifdef __LP64__ \\\n\\\t#define CURL_SIZEOF_LONG 8\\\n#else\\\n\\\t#define CURL_SIZEOF_LONG 4\\\n#endif!g' "${CURL_BUILD_HEADER}"
+if [ $? != 0 ]; then
+	print_error 'change curlbuild.h failed'
+	exit 1
+fi
+sed -ie 's!#define CURL_SIZEOF_CURL_OFF_T 8!#define CURL_SIZEOF_CURL_OFF_T CURL_SIZEOF_LONG!g' "${CURL_BUILD_HEADER}"
+if [ $? != 0 ]; then
+	print_error 'change curlbuild.h failed'
+	exit 1
+fi
 
 print_title "bundle done"
 
