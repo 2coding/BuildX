@@ -29,10 +29,11 @@ check_available ${CURL_PATH}
 CURRENT_PATH=`pwd`
 OUTPUT_DIR="${CURRENT_PATH}/output-ios-libcurl-${CURL_VERSION}"
 recreact_dir ${OUTPUT_DIR}
+DEPLOYMENT_TARGET=6.0
 
 cd $CURL_PATH
 generate_cflags() {
-	echo "-arch $1 -pipe -Os -gdwarf-2 -isysroot $2"
+	echo "-arch $1 -pipe -Os -gdwarf-2 -miphoneos-version-min=${DEPLOYMENT_TARGET} -isysroot $2"
 }
 
 generate_config() {
@@ -49,8 +50,7 @@ build_libcurl() {
 	arch=$1
 	sdkpath=$2
 	print_title "\nBuild for ${arch}..."
-	deployment_target='6.0'
-	print_info "* Deployment Target = \"IOS ${deployment_target}\""
+	print_info "* Deployment Target = \"IOS ${DEPLOYMENT_TARGET}\""
 
 	flags=$(generate_cflags ${arch} ${sdkpath})
 	print_info "* CFLAGS = \"${flags}\""
@@ -64,7 +64,6 @@ build_libcurl() {
 	buildlog="${curoutput}/build.log"
 
 	#run command
-	export iPhoneOS_DEPLOYMENT_TARGET=$deployment_target
 	export CFLAGS="${flags}"
 
 	print_info "configure..."
